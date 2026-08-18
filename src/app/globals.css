@@ -16,22 +16,6 @@
   --color-accent-soft: #e6f0ed;
   --color-danger: #b3261e;
 
-  /* Trip palette — assigned in creation order, colours a branch on the map */
-  --color-trip-1: #0b5d51;
-  --color-trip-2: #c1442e;
-  --color-trip-3: #2b5fad;
-  --color-trip-4: #b07d2a;
-  --color-trip-5: #6b4e9e;
-  --color-trip-6: #197a8c;
-
-  /* Transport modes — colours a leg inside a trip */
-  --color-mode-train: #2b5fad;
-  --color-mode-bus: #c1442e;
-  --color-mode-plane: #6b4e9e;
-  --color-mode-ferry: #197a8c;
-  --color-mode-car: #6c7683;
-  --color-mode-walk: #6c7683;
-
   /* Type — display is Bricolage, body Instrument Sans, data IBM Plex Mono */
   --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
@@ -116,5 +100,108 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Map
+   --------------------------------------------------------------------------- */
+
+/* Leaflet paints its own containers; these keep it inside the visual system. */
+div.leaflet-container {
+  font-family: var(--font-sans);
+  background: var(--color-paper);
+}
+
+.leaflet-control-attribution {
+  background: rgb(255 255 255 / 0.85);
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.leaflet-control-attribution a {
+  color: var(--color-muted);
+}
+
+/* The base: a filled dot in --ink with an outer ring, and its own label. */
+.base-marker {
+  position: relative;
+  display: block;
+}
+
+.base-marker__dot,
+.base-marker__ring {
+  position: absolute;
+  border-radius: 9999px;
+  transform: translate(-50%, -50%);
+}
+
+.base-marker__dot {
+  width: 10px;
+  height: 10px;
+  background: var(--color-ink);
+}
+
+.base-marker__ring {
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--color-ink);
+  opacity: 0.45;
+}
+
+.base-marker__label {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  color: var(--color-ink);
+  background: rgb(255 255 255 / 0.85);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+/* Motion, moment one of two: the branches draw themselves in on entry,
+   staggered 60ms per trip. Dashed legs cannot animate stroke-dashoffset
+   without fighting their own dash pattern, so those fade instead. */
+.leg-line--draw {
+  stroke-dasharray: 2000;
+  stroke-dashoffset: 2000;
+  animation: leg-draw 400ms ease-out forwards;
+  animation-delay: var(--draw-delay, 0ms);
+}
+
+.leg-line--fade {
+  opacity: 0;
+  animation: leg-fade 400ms ease-out forwards;
+  animation-delay: var(--draw-delay, 0ms);
+}
+
+@keyframes leg-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes leg-fade {
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .leg-line--draw {
+    stroke-dasharray: none;
+    stroke-dashoffset: 0;
+    animation: none;
+  }
+  .leg-line--fade {
+    opacity: 1;
+    animation: none;
   }
 }
