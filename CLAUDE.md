@@ -151,8 +151,12 @@ Se não logado: uma tela só, com o nome do produto, uma frase do que ele faz e 
 login (Google e link por e-mail). Se logado, redireciona para `/app`.
 
 ### `/app` — a base
-O coração do produto. Mapa da Europa com **Barcelona no centro**, e todas as viagens desenhadas
-ao mesmo tempo, cada uma na sua cor.
+O coração do produto. **Mapa-múndi** com todas as viagens desenhadas ao mesmo tempo, cada uma na
+sua cor. Abre enquadrado na região da base, com zoom confortável, mas o mundo inteiro tem que ser
+alcançável — a maioria das viagens sai da Europa, não todas.
+
+- Zoom mínimo que caiba o planeta na tela; limite vertical para não rolar até o vazio polar.
+- Botão de **voltar para a base**, para quem navegou longe.
 
 - A base tem marcador próprio: círculo preenchido em `--ink` com anel externo e o rótulo `BASE`.
 - Quando o primeiro trecho de uma viagem **não** parte da base, ligar a base ao primeiro ponto
@@ -162,9 +166,15 @@ ao mesmo tempo, cada uma na sua cor.
   `RouteStrip`, número de dias e custo total. Passar o mouse ou tocar destaca o ramo no mapa e
   apaga os outros para 25% de opacidade.
 - Botão fixo **Nova viagem**.
-- Estado vazio: o mapa aparece centrado em Barcelona só com o marcador da base, e um convite
-  direto — "Sua base está em Barcelona. Crie a primeira viagem para começar a desenhar o mapa."
-  com o botão. Nada de ilustração genérica.
+- Estado vazio: o mapa aparece enquadrado na base, só com o marcador dela, e um convite direto —
+  "Sua base está em {cidade}. Crie a primeira viagem para começar a desenhar o mapa." com o
+  botão. O nome da cidade vem de `profiles.home_city`. Nada de ilustração genérica.
+- A base é editável a partir daqui: um controle discreto abre a tela de perfil.
+
+### `/app/perfil` — nome, base e moeda
+Tela curta: nome de exibição, cidade base (mesmo autocomplete do Photon usado nos trechos, que
+grava `home_city`, `home_lat`, `home_lng` e `home_code`), moeda e cotação do euro. Existe porque
+o schema declara a base como editável e nenhuma outra tela dá acesso a ela.
 
 ### `/app/trips/[id]` — a viagem
 Mapa só dessa viagem, colorido por meio de transporte, e um painel com três abas:
@@ -206,6 +216,39 @@ saída, chegada, companhia, custo, observações.
 
 ---
 
+## Comparador de rotas
+
+Para cada trecho, o app monta as alternativas plausíveis por meio de transporte e ajuda a
+escolher. **Nada disso consulta preço ao vivo** — ver a regra 5, que continua valendo.
+
+O que é calculado, sem consultar ninguém:
+
+- **Duração porta a porta**, não a duração do veículo. Voo de 2h vira ~6h somando deslocamento
+  até o aeroporto, antecedência de check-in e a viagem do aeroporto ao centro do destino. É o que
+  faz trem ganhar de avião em distância curta, e o número tem que aparecer.
+- **Custo por hora economizada** entre uma opção e a mais barata.
+- **Pegada de carbono** por modo.
+- **Efeito no roteiro** — trem noturno poupa uma diária; chegada tarde queima a noite.
+
+Filtros por preferência, porque o critério muda a cada trecho: mais barato, mais rápido, sem
+voar, chegar antes de certa hora, priorizar trem pela vista.
+
+Cada opção traz uma **nota curta em texto**, com a opinião do app sobre aquele trecho — o que
+compensa ali e por quê.
+
+### Preço real: link direto, nunca API
+
+Cada opção tem um botão que abre **Rome2Rio, Skyscanner ou Google Flights** com a busca já
+preenchida: origem, destino, data e número de passageiros, no que cada site aceitar por URL. Os
+três variam no que suportam — preencher o máximo possível em cada um, sem inventar parâmetro.
+
+O número de passageiros é da viagem, não do trecho.
+
+O que a pessoa achar lá volta para o campo de custo, que guarda **preço pesquisado** com a data
+da consulta, separado de **preço pago**. Um é estimativa que envelhece; o outro é fato.
+
+---
+
 ## Ordem de construção
 
 Fazer nessa sequência e **parar para eu revisar ao fim de cada uma**.
@@ -213,17 +256,29 @@ Fazer nessa sequência e **parar para eu revisar ao fim de cada uma**.
 1. **Fundação** — projeto Next.js, Tailwind com os tokens acima, fontes, shadcn. Supabase
    conectado, `schema.sql` rodado, login com Google e por e-mail funcionando, `profiles` criado
    no primeiro acesso com Barcelona como base.
-2. **Mapa da base** — `/app` com o mapa, marcador da base, criação de viagem, cards com
-   `RouteStrip`, ramos coloridos, estado vazio.
-3. **Trechos** — página da viagem, aba Rotas, diálogo de trecho com autocomplete, arcos por meio
+2. **Mapa da base** — `/app` com o mapa-múndi, marcador da base, criação de viagem, cards com
+   `RouteStrip`, ramos coloridos, estado vazio, e a tela de perfil.
+3. **Publicar** — deploy na Vercel, variáveis de ambiente no painel, domínio novo nas listas de
+   redirecionamento do Supabase e do Google. Feito cedo para dar para testar no celular de
+   verdade, que é metade do público do app.
+4. **Trechos** — página da viagem, aba Rotas, diálogo de trecho com autocomplete, arcos por meio
    de transporte, editar e excluir.
-4. **Custos** — aba Custos completa, com conversão para BRL.
-5. **Dias** — aba Dias, dedução da cidade por data, itens.
-6. **Compartilhar** — convite por e-mail, papéis, link público `/s/[token]`.
-7. **Acabamento** — responsivo de verdade no celular, foco visível no teclado, estados vazios de
-   cada aba, `metadata` e imagem de preview para o link compartilhado.
+5. **Comparador de rotas** — opções por modo, duração porta a porta, filtros por preferência,
+   nota sobre cada rota, links diretos já preenchidos. Exige schema novo.
+6. **Dias** — aba Dias, dedução da cidade por data, itens.
+7. **Custos** — aba Custos completa, com conversão para BRL. Depois de Dias porque a divisão por
+   categoria soma `items`, que só existem a partir de lá.
+8. **Compartilhar** — convite por e-mail, papéis, link público `/s/[token]`.
+9. **Acabamento e identidade** — responsivo de verdade no celular, foco visível no teclado,
+   estados vazios de cada aba, `metadata` e imagem de preview. Depois disso, a estética final no
+   Claude Design: os tokens atuais são ponto de partida, não amarra.
 
 ## Fora de escopo
 
 Roteamento ferroviário real, preços de passagem ao vivo, integração com reserva, upload de
 arquivos, chat entre membros, modo offline, aplicativo nativo.
+
+Preço ao vivo continua fora **de propósito**: as três fontes conhecidas ou não têm API pública
+(Google Flights), ou exigem licença comercial (Rome2Rio, Skyscanner), e o portal Self-Service da
+Amadeus foi desligado em julho de 2026. O comparador resolve por link direto, que é gratuito,
+legal e não quebra.
