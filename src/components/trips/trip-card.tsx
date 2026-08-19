@@ -3,7 +3,7 @@
 import { RouteStrip } from "@/components/trips/route-strip";
 import type { Profile, TripWithRoute } from "@/lib/db/types";
 import { formatDateRange, formatMoney } from "@/lib/format";
-import { tripCostCents, tripDayCount, tripStops } from "@/lib/trip-route";
+import { tripCostCents, tripDayCount, tripRoute } from "@/lib/trip-route";
 import { cn } from "@/lib/utils";
 
 export function TripCard({
@@ -19,7 +19,7 @@ export function TripCard({
   onHighlight: (tripId: string | null) => void;
   onFocusTrip: (tripId: string) => void;
 }) {
-  const stops = tripStops(trip);
+  const stops = tripRoute(trip);
   const days = tripDayCount(trip);
   const period = formatDateRange(trip.start_date, trip.end_date);
   const total = tripCostCents(trip);

@@ -14,8 +14,8 @@ import "leaflet/dist/leaflet.css";
 
 import type { Profile, TripWithRoute } from "@/lib/db/types";
 import { AIR_OR_SEA } from "@/lib/map/colors";
-import { arcBetween, CURVATURE, type LatLng } from "@/lib/map/geometry";
-import { tripStops } from "@/lib/trip-route";
+import type { LatLng } from "@/lib/map/geometry";
+import { legMode, tripRoute } from "@/lib/trip-route";
 
 const BASE_ZOOM = 5;
 /** Wide enough that the whole planet fits on a phone in landscape. */
@@ -37,28 +37,25 @@ type Branch = {
 };
 
 function buildBranch(trip: TripWithRoute, base: LatLng): Branch | null {
-  const stops = tripStops(trip);
+  const stops = tripRoute(trip);
   if (stops.length === 0) return null;
 
+  // Straight lines from stop to stop: the map reports the route, it does not
+  // illustrate a path. Air and sea stay dashed so the mode still reads.
   const segments: Segment[] = [];
   for (let i = 1; i < stops.length; i++) {
-    const from: LatLng = [stops[i - 1].place.lat, stops[i - 1].place.lng];
-    const to: LatLng = [stops[i].place.lat, stops[i].place.lng];
-    const mode = stops[i].arrivedBy?.mode ?? "train";
-    const dashed = AIR_OR_SEA.has(mode);
+    const from: LatLng = [stops[i - 1].stop.lat, stops[i - 1].stop.lng];
+    const to: LatLng = [stops[i].stop.lat, stops[i].stop.lng];
+    const dashed = AIR_OR_SEA.has(legMode(stops[i].legIn));
 
-    segments.push({
-      key: `${trip.id}-${i}`,
-      points: arcBetween(from, to, dashed ? CURVATURE.air : CURVATURE.ground),
-      dashed,
-    });
+    segments.push({ key: `${trip.id}-${i}`, points: [from, to], dashed });
   }
 
-  const first: LatLng = [stops[0].place.lat, stops[0].place.lng];
+  const first: LatLng = [stops[0].stop.lat, stops[0].stop.lng];
   const startsAtBase =
     Math.abs(first[0] - base[0]) < 0.05 && Math.abs(first[1] - base[1]) < 0.05;
 
-  const approach = startsAtBase ? null : arcBetween(base, first, CURVATURE.ground);
+  const approach: LatLng[] | null = startsAtBase ? null : [base, first];
 
   return {
     tripId: trip.id,

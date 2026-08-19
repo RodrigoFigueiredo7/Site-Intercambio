@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { BaseView } from "@/app/app/base-view";
-import type { Leg, Place, Profile, Trip, TripWithRoute } from "@/lib/db/types";
+import type { Leg, Profile, Stop, Trip, TripWithRoute } from "@/lib/db/types";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function BasePage() {
@@ -32,20 +32,22 @@ export default async function BasePage() {
     );
   }
 
-  // RLS keeps all three queries to trips this user may read.
-  const [{ data: trips }, { data: places }, { data: legs }] = await Promise.all([
+  // RLS keeps all three queries to trips this user may read. Inactive legs
+  // are left behind on purpose: they hold booking details for pairs that are
+  // not consecutive right now, and the route must not show them.
+  const [{ data: trips }, { data: stops }, { data: legs }] = await Promise.all([
     supabase
       .from("trips")
       .select("*")
       .order("created_at", { ascending: true })
       .returns<Trip[]>(),
-    supabase.from("places").select("*").returns<Place[]>(),
-    supabase.from("legs").select("*").returns<Leg[]>(),
+    supabase.from("stops").select("*").order("arrive_at").returns<Stop[]>(),
+    supabase.from("legs").select("*").eq("is_active", true).returns<Leg[]>(),
   ]);
 
   const withRoute: TripWithRoute[] = (trips ?? []).map((trip) => ({
     ...trip,
-    places: (places ?? []).filter((place) => place.trip_id === trip.id),
+    stops: (stops ?? []).filter((stop) => stop.trip_id === trip.id),
     legs: (legs ?? []).filter((leg) => leg.trip_id === trip.id),
   }));
 

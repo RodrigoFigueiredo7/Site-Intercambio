@@ -1,48 +1,68 @@
-import type { Leg, Place, TripWithRoute } from "@/lib/db/types";
+import type { Leg, Stop, TransportMode, TripWithRoute } from "@/lib/db/types";
 
-export type Stop = {
-  place: Place;
-  /** The leg that arrives at this stop. Null for the first stop of a trip. */
-  arrivedBy: Leg | null;
+export type RouteStop = {
+  stop: Stop;
+  /** The travel that arrives at this stop. Null for the first one. */
+  legIn: Leg | null;
 };
 
-function byDeparture(a: Leg, b: Leg) {
-  const dateA = a.depart_date ?? "";
-  const dateB = b.depart_date ?? "";
-  if (dateA !== dateB) return dateA < dateB ? -1 : 1;
-  return (a.depart_time ?? "").localeCompare(b.depart_time ?? "");
+/** YYYY-MM-DD as read on a clock in that timezone. */
+function localDay(iso: string, tz: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(iso));
+}
+
+function daysBetween(fromDay: string, toDay: string): number {
+  return Math.round(
+    (Date.parse(`${toDay}T00:00:00Z`) - Date.parse(`${fromDay}T00:00:00Z`)) / 86_400_000,
+  );
 }
 
 /**
- * Walks a trip's legs in departure order and returns the stops in sequence.
- * Legs are the source of truth for the order — `places.position` only breaks
- * ties for cities that no leg touches yet.
+ * Midnights crossed inside the stop, counted on the city's own clock.
+ * A day trip is zero. Arriving at 01:30 is one night fewer than a naive
+ * UTC count would give — a whole hotel night.
  */
-export function tripStops(trip: TripWithRoute): Stop[] {
-  const byId = new Map(trip.places.map((place) => [place.id, place]));
-  const legs = [...trip.legs].sort(byDeparture);
-
-  const stops: Stop[] = [];
-  for (const leg of legs) {
-    const from = leg.from_place_id ? byId.get(leg.from_place_id) : undefined;
-    const to = leg.to_place_id ? byId.get(leg.to_place_id) : undefined;
-
-    if (stops.length === 0 && from) stops.push({ place: from, arrivedBy: null });
-    if (to) stops.push({ place: to, arrivedBy: leg });
-  }
-  return stops;
+export function nights(stop: Stop): number {
+  return daysBetween(localDay(stop.arrive_at, stop.tz), localDay(stop.depart_at, stop.tz));
 }
 
-/** Total of every leg in the trip, in cents. */
+/** The route, in the only order that exists: by arrival. */
+export function tripRoute(trip: TripWithRoute): RouteStop[] {
+  const ordered = [...trip.stops].sort((a, b) => a.arrive_at.localeCompare(b.arrive_at));
+  const active = trip.legs.filter((leg) => leg.is_active);
+
+  return ordered.map((stop, index) => ({
+    stop,
+    legIn:
+      index === 0
+        ? null
+        : (active.find(
+            (leg) => leg.from_stop_id === ordered[index - 1].id && leg.to_stop_id === stop.id,
+          ) ?? null),
+  }));
+}
+
+/** What the leg is drawn and coloured as: my choice, else the suggestion. */
+export function legMode(leg: Leg | null): TransportMode {
+  return leg?.mode ?? leg?.suggested_mode ?? "train";
+}
+
+/** Travel plus lodging. Only active legs count. */
 export function tripCostCents(trip: TripWithRoute): number {
-  return trip.legs.reduce((sum, leg) => sum + leg.cost_cents, 0);
+  const travel = trip.legs
+    .filter((leg) => leg.is_active)
+    .reduce((sum, leg) => sum + leg.cost_cents, 0);
+  const lodging = trip.stops.reduce((sum, stop) => sum + stop.lodging_cost_cents, 0);
+  return travel + lodging;
 }
 
-/** Inclusive day count between the trip dates, or null when a date is missing. */
+/** Inclusive day count of the trip's calendar frame. */
 export function tripDayCount(trip: { start_date: string | null; end_date: string | null }) {
   if (!trip.start_date || !trip.end_date) return null;
-  const start = Date.parse(`${trip.start_date}T00:00:00Z`);
-  const end = Date.parse(`${trip.end_date}T00:00:00Z`);
-  if (Number.isNaN(start) || Number.isNaN(end)) return null;
-  return Math.round((end - start) / 86_400_000) + 1;
+  return daysBetween(trip.start_date, trip.end_date) + 1;
 }

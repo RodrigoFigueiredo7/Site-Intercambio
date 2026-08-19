@@ -1,5 +1,5 @@
 import { AIR_OR_SEA } from "@/lib/map/colors";
-import type { Stop } from "@/lib/trip-route";
+import { legMode, type RouteStop } from "@/lib/trip-route";
 import { cn } from "@/lib/utils";
 
 /**
@@ -21,7 +21,7 @@ export function RouteStrip({
   color,
   className,
 }: {
-  stops: Stop[];
+  stops: RouteStop[];
   color: string;
   className?: string;
 }) {
@@ -39,15 +39,15 @@ export function RouteStrip({
       style={{ gridTemplateColumns: template }}
       role="img"
       aria-label={`Rota: ${stops
-        .map((stop) => stop.place.code ?? stop.place.name)
+        .map((stop) => stop.stop.code ?? stop.stop.name)
         .join(", ")}`}
     >
       {stops.map((stop, index) => {
         const column = 2 * index + 1;
-        const dashed = stop.arrivedBy ? AIR_OR_SEA.has(stop.arrivedBy.mode) : false;
+        const dashed = stop.legIn ? AIR_OR_SEA.has(legMode(stop.legIn)) : false;
 
         return (
-          <div key={`${stop.place.id}-${index}`} className="contents">
+          <div key={`${stop.stop.id}-${index}`} className="contents">
             {index > 0 && (
               <span
                 aria-hidden="true"
@@ -72,7 +72,7 @@ export function RouteStrip({
               className="justify-self-center font-mono text-label tracking-[0.06em] text-muted"
               style={{ gridRow: 2, gridColumn: column }}
             >
-              {stop.place.code ?? stop.place.name.slice(0, 3).toUpperCase()}
+              {stop.stop.code ?? stop.stop.name.slice(0, 3).toUpperCase()}
             </span>
           </div>
         );
