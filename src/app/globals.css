@@ -43,6 +43,12 @@
 
   /* The only shadow in the system, reserved for an open dialog */
   --shadow-dialog: 0 8px 32px rgb(20 24 31 / 0.1);
+
+  /* Leaflet stacks its own panes from 200 up to 1000. Anything that has to
+     float above the map has to clear that, so the layer is named once here
+     rather than guessed at each call site. */
+  --z-index-map-overlay: 1100;
+  --z-index-dialog: 1200;
 }
 
 @layer base {

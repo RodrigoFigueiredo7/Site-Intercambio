@@ -81,7 +81,7 @@ export function BaseView({
       </aside>
 
       {/* Map */}
-      <div className="relative h-[45dvh] flex-none md:h-full md:flex-1">
+      <div className="relative isolate h-[45dvh] flex-none md:h-full md:flex-1">
         <MapShell
           profile={profile}
           trips={trips}
@@ -93,7 +93,7 @@ export function BaseView({
           <button
             type="button"
             onClick={() => setFocusedTripId(null)}
-            className="absolute left-4 top-4 z-[1000] h-11 rounded-full border border-line bg-surface px-4 font-mono text-xs text-ink hover:bg-paper"
+            className="absolute left-4 top-4 z-map-overlay h-11 rounded-full border border-line bg-surface px-4 font-mono text-xs text-ink hover:bg-paper"
           >
             Voltar para a base
           </button>
