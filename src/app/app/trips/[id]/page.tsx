@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 
 import { TripView } from "@/app/app/trips/[id]/trip-view";
-import type { Leg, Profile, Stop, Trip } from "@/lib/db/types";
+import type { Item, Leg, Profile, Stop, Trip } from "@/lib/db/types";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function TripPage({ params }: { params: Promise<{ id: string }> }) {
@@ -13,7 +13,7 @@ export default async function TripPage({ params }: { params: Promise<{ id: strin
   } = await supabase.auth.getUser();
   if (!user) redirect("/");
 
-  const [{ data: profile }, { data: trip }, { data: stops }, { data: legs }] =
+  const [{ data: profile }, { data: trip }, { data: stops }, { data: legs }, { data: items }] =
     await Promise.all([
       supabase
         .from("profiles")
@@ -25,6 +25,7 @@ export default async function TripPage({ params }: { params: Promise<{ id: strin
       // Inactive legs hold booking details for pairs that are not consecutive
       // right now. They stay in the database and out of the route.
       supabase.from("legs").select("*").eq("trip_id", id).eq("is_active", true).returns<Leg[]>(),
+      supabase.from("items").select("*").eq("trip_id", id).order("day").returns<Item[]>(),
     ]);
 
   if (!trip || !profile) notFound();
@@ -33,6 +34,7 @@ export default async function TripPage({ params }: { params: Promise<{ id: strin
     <TripView
       trip={{ ...trip, stops: stops ?? [], legs: legs ?? [] }}
       profile={profile}
+      items={items ?? []}
     />
   );
 }

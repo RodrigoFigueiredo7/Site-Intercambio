@@ -5,12 +5,14 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
+import { DayCard } from "@/components/days/day-card";
 import { LegRow } from "@/components/stops/leg-row";
 import { StopRow } from "@/components/stops/stop-row";
 import { StopSearch } from "@/components/stops/stop-search";
 import { RouteStrip } from "@/components/trips/route-strip";
 import { Button } from "@/components/ui/button";
-import type { Profile, TripWithRoute } from "@/lib/db/types";
+import type { Item, Profile, TripWithRoute } from "@/lib/db/types";
+import { tripDays } from "@/lib/days";
 import { formatMoney } from "@/lib/format";
 import { formatDuration, travelMinutes, tripCostCents, tripRoute } from "@/lib/trip-route";
 
@@ -19,21 +21,33 @@ const TripMap = dynamic(
   { ssr: false, loading: () => <div className="size-full bg-paper" aria-hidden="true" /> },
 );
 
-export function TripView({ trip, profile }: { trip: TripWithRoute; profile: Profile }) {
+type Tab = "rota" | "dias";
+
+export function TripView({
+  trip,
+  profile,
+  items,
+}: {
+  trip: TripWithRoute;
+  profile: Profile;
+  items: Item[];
+}) {
+  const [tab, setTab] = useState<Tab>("rota");
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
   const route = tripRoute(trip);
+  const days = tripDays(trip, items);
   const lastStop = route.length > 0 ? route[route.length - 1].stop : null;
   const total = tripCostCents(trip);
 
   // Picking a pin scrolls the list to the stop it belongs to.
   useEffect(() => {
-    if (!selectedStopId) return;
+    if (!selectedStopId || tab !== "rota") return;
     listRef.current
       ?.querySelector(`#parada-${CSS.escape(selectedStopId)}`)
       ?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [selectedStopId]);
+  }, [selectedStopId, tab]);
 
   return (
     <div className="flex h-dvh flex-col-reverse md:flex-row">
@@ -59,8 +73,49 @@ export function TripView({ trip, profile }: { trip: TripWithRoute; profile: Prof
           </div>
         )}
 
+        <div
+          role="tablist"
+          aria-label="Seções da viagem"
+          className="flex flex-none border-b border-line"
+        >
+          {(["rota", "dias"] as const).map((value) => (
+            <button
+              key={value}
+              role="tab"
+              aria-selected={tab === value}
+              onClick={() => setTab(value)}
+              className={`h-11 flex-1 font-mono text-label uppercase tracking-[0.12em] ${
+                tab === value
+                  ? "border-b-2 border-accent text-ink"
+                  : "border-b-2 border-transparent text-muted hover:bg-paper"
+              }`}
+            >
+              {value === "rota" ? "Rota" : "Dias"}
+            </button>
+          ))}
+        </div>
+
         <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-          {route.length === 0 ? (
+          {tab === "dias" ? (
+            days.length === 0 ? (
+              <div className="px-5 py-8">
+                <p className="label-caps">Sem dias ainda</p>
+                <p className="mt-3 text-base text-ink">
+                  Os dias aparecem a partir das datas da viagem e das paradas. Adicione a
+                  primeira cidade ou preencha as datas da viagem.
+                </p>
+              </div>
+            ) : (
+              days.map((day) => (
+                <DayCard
+                  key={day.date}
+                  day={day}
+                  tripId={trip.id}
+                  currency={profile.currency}
+                />
+              ))
+            )
+          ) : route.length === 0 ? (
             <div className="px-5 py-8">
               <p className="label-caps">Nenhuma parada ainda</p>
               <p className="mt-3 text-base text-ink">

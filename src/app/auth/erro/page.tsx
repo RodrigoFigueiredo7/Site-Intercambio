@@ -13,7 +13,7 @@ export default async function AuthErrorPage({
     <main className="flex min-h-dvh flex-col items-center justify-center px-5 py-12">
       <div className="w-full max-w-sm">
         <p className="label-caps">Entrada</p>
-        <h1 className="mt-2 font-display text-title font-bold">
+        <h1 className="mt-2 text-title font-semibold">
           Não deu para entrar
         </h1>
         <p className="mt-3 text-base text-muted">

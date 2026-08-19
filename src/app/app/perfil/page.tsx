@@ -31,7 +31,7 @@ export default async function ProfilePage() {
             <ArrowLeft />
           </Link>
         </Button>
-        <span className="font-display text-section font-bold">Perfil</span>
+        <span className="text-section font-semibold">Perfil</span>
       </header>
 
       <main className="px-5 py-10">

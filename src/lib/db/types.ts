@@ -74,3 +74,20 @@ export type TripWithRoute = Trip & {
   stops: Stop[];
   legs: Leg[];
 };
+
+export type ItemCategory = "lodging" | "activity" | "food" | "other";
+
+/** Something that happens on a day: a visit, a meal, a booking. */
+export type Item = {
+  id: string;
+  trip_id: string;
+  stop_id: string | null;
+  day: string;
+  start_time: string | null;
+  category: ItemCategory;
+  title: string;
+  cost_cents: number;
+  url: string | null;
+  notes: string | null;
+  position: number;
+};

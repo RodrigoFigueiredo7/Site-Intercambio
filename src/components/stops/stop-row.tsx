@@ -75,7 +75,7 @@ export function StopRow({
           <span className="font-mono text-xs text-muted">
             {stop.code ?? stop.name.slice(0, 3).toUpperCase()}
           </span>
-          <span className="font-display text-section font-bold">{stop.name}</span>
+          <span className="text-section font-semibold">{stop.name}</span>
           {stop.country && <span className="text-xs text-muted">{stop.country}</span>}
         </div>
 
