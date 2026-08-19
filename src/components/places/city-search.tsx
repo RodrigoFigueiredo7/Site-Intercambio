@@ -28,17 +28,21 @@ export function CitySearch({
   initialValue = "",
   placeholder = "Buscar cidade…",
   onSelect,
+  onType,
   className,
 }: {
   id?: string;
   initialValue?: string;
   placeholder?: string;
   onSelect: (city: CityResult) => void;
+  /** Every keystroke, so the parent can tell typed text from a real choice. */
+  onType?: (text: string) => void;
   className?: string;
 }) {
   const [query, setQuery] = useState(initialValue);
   const [results, setResults] = useState<CityResult[]>([]);
   const [open, setOpen] = useState(false);
+  const [searching, setSearching] = useState(false);
   const [failed, setFailed] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
 
@@ -52,6 +56,7 @@ export function CitySearch({
 
     const controller = new AbortController();
     const timer = setTimeout(async () => {
+      setSearching(true);
       try {
         const url = `https://photon.komoot.io/api?q=${encodeURIComponent(query)}&limit=6&lang=pt`;
         const response = await fetch(url, { signal: controller.signal });
@@ -59,6 +64,7 @@ export function CitySearch({
         const data = (await response.json()) as { features: PhotonFeature[] };
 
         setFailed(false);
+        setSearching(false);
         setResults(
           data.features.map((feature) => {
             const name = feature.properties.name ?? feature.properties.city ?? "";
@@ -73,7 +79,10 @@ export function CitySearch({
         );
         setOpen(true);
       } catch (error) {
-        if ((error as Error).name !== "AbortError") setFailed(true);
+        if ((error as Error).name !== "AbortError") {
+          setSearching(false);
+          setFailed(true);
+        }
       }
     }, 250);
 
@@ -105,7 +114,10 @@ export function CitySearch({
         value={query}
         placeholder={placeholder}
         autoComplete="off"
-        onChange={(event) => setQuery(event.target.value)}
+        onChange={(event) => {
+          setQuery(event.target.value);
+          onType?.(event.target.value);
+        }}
         onFocus={() => visible.length > 0 && setOpen(true)}
         onKeyDown={(event) => {
           if (event.key === "Escape") setOpen(false);
@@ -133,9 +145,22 @@ export function CitySearch({
         </ul>
       )}
 
-      {failed && (
+      {searching && !failed && (
+        <p className="mt-1.5 font-mono text-xs text-muted">buscando…</p>
+      )}
+
+      {!searching && !failed && !tooShort && visible.length === 0 && (
         <p className="mt-1.5 text-xs text-muted">
-          A busca de cidades não respondeu. Verifique a conexão e tente de novo.
+          Nenhuma cidade encontrada para “{query.trim()}”. Tente o nome no idioma local
+          — Wien no lugar de Viena, por exemplo.
+        </p>
+      )}
+
+      {failed && (
+        <p role="alert" className="mt-1.5 text-xs text-danger">
+          A busca de cidades não respondeu. Ela usa o serviço gratuito photon.komoot.io,
+          direto do seu navegador — verifique a conexão, ou se alguma extensão ou firewall
+          está bloqueando o endereço.
         </p>
       )}
     </div>

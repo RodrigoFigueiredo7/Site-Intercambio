@@ -19,13 +19,24 @@ export function ProfileForm({ profile }: { profile: Profile }) {
   const [status, setStatus] = useState<{ kind: "idle" | "saved" } | { kind: "error"; message: string }>({
     kind: "idle",
   });
+  // Coordinates only exist for a city picked from the list. Typing a name and
+  // saving used to keep the old base without saying so.
+  const [unconfirmed, setUnconfirmed] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function onCity(city: CityResult) {
     setBase({ city: city.name, lat: city.lat, lng: city.lng, code: city.code });
+    setUnconfirmed(false);
   }
 
   function onSubmit(formData: FormData) {
+    if (unconfirmed) {
+      setStatus({
+        kind: "error",
+        message: "Escolha a cidade na lista que aparece abaixo do campo — é dela que saem as coordenadas do mapa.",
+      });
+      return;
+    }
     setStatus({ kind: "idle" });
     startTransition(async () => {
       const result = await updateProfile(formData);
@@ -52,18 +63,25 @@ export function ProfileForm({ profile }: { profile: Profile }) {
           id="home-city"
           initialValue={profile.home_city}
           onSelect={onCity}
+          onType={(text) => setUnconfirmed(text.trim() !== base.city)}
           className="mt-2"
         />
         <input type="hidden" name="home_city" value={base.city} />
         <input type="hidden" name="home_lat" value={base.lat} />
         <input type="hidden" name="home_lng" value={base.lng} />
         <p className="mt-2 font-mono text-xs text-muted">
-          {base.lat.toFixed(4)}, {base.lng.toFixed(4)}
+          {base.city} · {base.lat.toFixed(4)}, {base.lng.toFixed(4)}
         </p>
-        <p className="mt-1.5 text-xs text-muted">
-          É de onde suas viagens saem no mapa. Escolha um resultado da lista para gravar a
-          localização.
-        </p>
+        {unconfirmed ? (
+          <p className="mt-1.5 text-xs text-danger">
+            Ainda não escolhido. Toque num resultado da lista para gravar a nova base —
+            enquanto isso, a base continua sendo {base.city}.
+          </p>
+        ) : (
+          <p className="mt-1.5 text-xs text-muted">
+            É de onde suas viagens saem no mapa. A linha acima mostra o que será salvo.
+          </p>
+        )}
       </div>
 
       <div className="flex gap-3">
