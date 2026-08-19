@@ -1,5 +1,7 @@
 export type CityResult = {
   name: string;
+  /** State, province or region — what tells two cities of the same name apart. */
+  region: string | null;
   country: string | null;
   lat: number;
   lng: number;

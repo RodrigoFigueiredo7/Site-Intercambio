@@ -66,3 +66,21 @@ export function tripDayCount(trip: { start_date: string | null; end_date: string
   if (!trip.start_date || !trip.end_date) return null;
   return daysBetween(trip.start_date, trip.end_date) + 1;
 }
+
+/** Travel time between two stops: the gap between leaving and arriving. */
+export function travelMinutes(from: Stop, to: Stop): number {
+  return Math.round((Date.parse(to.arrive_at) - Date.parse(from.depart_at)) / 60_000);
+}
+
+/** "6h40", "45min", "1d 3h" — never typed, always this subtraction. */
+export function formatDuration(minutes: number): string {
+  if (minutes < 0) return "—";
+  if (minutes < 60) return `${minutes}min`;
+
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (hours < 24) return rest === 0 ? `${hours}h` : `${hours}h${String(rest).padStart(2, "0")}`;
+
+  const days = Math.floor(hours / 24);
+  return `${days}d ${hours % 24}h`;
+}

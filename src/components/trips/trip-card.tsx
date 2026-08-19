@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { RouteStrip } from "@/components/trips/route-strip";
 import type { Profile, TripWithRoute } from "@/lib/db/types";
 import { formatDateRange, formatMoney } from "@/lib/format";
@@ -11,13 +13,11 @@ export function TripCard({
   profile,
   dimmed,
   onHighlight,
-  onFocusTrip,
 }: {
   trip: TripWithRoute;
   profile: Profile;
   dimmed: boolean;
   onHighlight: (tripId: string | null) => void;
-  onFocusTrip: (tripId: string) => void;
 }) {
   const stops = tripRoute(trip);
   const days = tripDayCount(trip);
@@ -25,15 +25,14 @@ export function TripCard({
   const total = tripCostCents(trip);
 
   return (
-    <button
-      type="button"
+    <Link
+      href={`/app/trips/${trip.id}`}
       onMouseEnter={() => onHighlight(trip.id)}
       onMouseLeave={() => onHighlight(null)}
       onFocus={() => onHighlight(trip.id)}
       onBlur={() => onHighlight(null)}
-      onClick={() => onFocusTrip(trip.id)}
       className={cn(
-        "w-full border-b border-line px-5 py-4 text-left transition-opacity hover:bg-surface",
+        "block w-full border-b border-line px-5 py-4 text-left transition-opacity hover:bg-surface",
         dimmed && "opacity-40",
       )}
     >
@@ -64,6 +63,6 @@ export function TripCard({
           {formatMoney(total, profile.currency)}
         </span>
       </div>
-    </button>
+    </Link>
   );
 }

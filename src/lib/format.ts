@@ -49,3 +49,20 @@ export function cityCode(name: string) {
     .replace(/[^A-Z]/g, "");
   return plain.slice(0, 3) || "---";
 }
+
+/**
+ * "34,50" or "34.50" → 3450. The interface takes euros because that is what
+ * a ticket says; the database only ever sees integer cents.
+ */
+export function parseMoneyToCents(text: string): number | null {
+  const cleaned = text.trim().replace(/\s/g, "").replace(",", ".");
+  if (cleaned === "") return 0;
+  const value = Number(cleaned);
+  if (!Number.isFinite(value) || value < 0) return null;
+  return Math.round(value * 100);
+}
+
+/** The reverse, for filling an editable field. */
+export function centsToInput(cents: number): string {
+  return (cents / 100).toFixed(2).replace(".", ",");
+}

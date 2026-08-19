@@ -211,3 +211,48 @@ div.leaflet-container {
     animation: none;
   }
 }
+
+/* A stop on the trip map. Neutral by default; the accent marks the one
+   being looked at, so the map and the list always agree. */
+.stop-pin {
+  position: relative;
+  display: block;
+}
+
+.stop-pin__dot {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  border-radius: 9999px;
+  background: var(--color-surface);
+  border: 2px solid var(--color-ink);
+  transform: translate(-50%, -50%);
+}
+
+.stop-pin__label {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--color-ink);
+  background: rgb(255 255 255 / 0.85);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.stop-pin--on .stop-pin__dot {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  width: 15px;
+  height: 15px;
+}
+
+.stop-pin--on .stop-pin__label {
+  color: var(--color-accent);
+  font-weight: 600;
+}

@@ -13,7 +13,7 @@ const TIMEOUT_MS = 4000;
 const CACHE_SECONDS = 86_400;
 
 type PhotonFeature = {
-  properties?: { name?: string; city?: string; country?: string };
+  properties?: { name?: string; city?: string; state?: string; country?: string };
   geometry?: { coordinates?: [number, number] };
 };
 
@@ -22,34 +22,67 @@ type NominatimPlace = {
   display_name?: string;
   lat?: string;
   lon?: string;
-  address?: { country?: string };
+  address?: { state?: string; county?: string; country?: string };
 };
 
-function toCity(name: string, country: string | null, lat: number, lng: number): CityResult {
-  return { name, country, lat, lng, code: cityCode(name) };
+function toCity(
+  name: string,
+  region: string | null,
+  country: string | null,
+  lat: number,
+  lng: number,
+): CityResult {
+  return { name, region, country, lat, lng, code: cityCode(name) };
+}
+
+/** Two entries for the same city name are useless without what separates them. */
+function dedupe(results: CityResult[]): CityResult[] {
+  const seen = new Set<string>();
+  return results.filter((city) => {
+    const key = `${city.name}|${city.region ?? ""}|${city.country ?? ""}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export function parsePhoton(data: unknown): CityResult[] {
   const features = (data as { features?: PhotonFeature[] })?.features ?? [];
-  return features.flatMap((feature) => {
+  return dedupe(features.flatMap((feature) => {
     const name = feature?.properties?.name ?? feature?.properties?.city;
     const coordinates = feature?.geometry?.coordinates;
     if (!name || !Array.isArray(coordinates) || coordinates.length < 2) return [];
     const [lng, lat] = coordinates;
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return [];
-    return [toCity(name, feature.properties?.country ?? null, lat, lng)];
-  });
+    return [
+      toCity(
+        name,
+        feature.properties?.state ?? null,
+        feature.properties?.country ?? null,
+        lat,
+        lng,
+      ),
+    ];
+  }));
 }
 
 export function parseNominatim(data: unknown): CityResult[] {
   const places = Array.isArray(data) ? (data as NominatimPlace[]) : [];
-  return places.flatMap((place) => {
+  return dedupe(places.flatMap((place) => {
     const name = place?.name || place?.display_name?.split(",")[0]?.trim();
     const lat = Number(place?.lat);
     const lng = Number(place?.lon);
     if (!name || !Number.isFinite(lat) || !Number.isFinite(lng)) return [];
-    return [toCity(name, place.address?.country ?? null, lat, lng)];
-  });
+    return [
+      toCity(
+        name,
+        place.address?.state ?? place.address?.county ?? null,
+        place.address?.country ?? null,
+        lat,
+        lng,
+      ),
+    ];
+  }));
 }
 
 export async function fromPhoton(query: string): Promise<CityResult[]> {

@@ -19,7 +19,6 @@ export function BaseView({
   trips: TripWithRoute[];
 }) {
   const [highlightedTripId, setHighlightedTripId] = useState<string | null>(null);
-  const [focusedTripId, setFocusedTripId] = useState<string | null>(null);
 
   const empty = trips.length === 0;
 
@@ -65,9 +64,6 @@ export function BaseView({
                     profile={profile}
                     dimmed={highlightedTripId !== null && highlightedTripId !== trip.id}
                     onHighlight={setHighlightedTripId}
-                    onFocusTrip={(id) =>
-                      setFocusedTripId((current) => (current === id ? null : id))
-                    }
                   />
                 ))}
               </div>
@@ -86,18 +82,8 @@ export function BaseView({
           profile={profile}
           trips={trips}
           highlightedTripId={highlightedTripId}
-          focusedTripId={focusedTripId}
+          focusedTripId={null}
         />
-
-        {focusedTripId && (
-          <button
-            type="button"
-            onClick={() => setFocusedTripId(null)}
-            className="absolute left-4 top-4 z-map-overlay h-11 rounded-full border border-line bg-surface px-4 font-mono text-xs text-ink hover:bg-paper"
-          >
-            Voltar para a base
-          </button>
-        )}
       </div>
     </div>
   );
