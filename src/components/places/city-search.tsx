@@ -3,25 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 
 import { Input } from "@/components/ui/input";
-import { cityCode } from "@/lib/format";
+import { searchCities, type CityResult } from "@/lib/places/city";
 import { cn } from "@/lib/utils";
 
-export type CityResult = {
-  name: string;
-  country: string | null;
-  lat: number;
-  lng: number;
-  code: string;
-};
-
-type PhotonFeature = {
-  properties: { name?: string; city?: string; country?: string; state?: string };
-  geometry: { coordinates: [number, number] };
-};
+export type { CityResult };
 
 /**
- * City autocomplete against Photon, which is free and needs no key.
- * Runs in the browser, so the request leaves from the person's machine.
+ * City autocomplete. The request goes to this app's own /api/cidades, which
+ * queries the geocoders server-side — a browser extension or a filtered
+ * network must not be able to disable the most important field in the app.
  */
 export function CitySearch({
   id,
@@ -43,7 +33,7 @@ export function CitySearch({
   const [results, setResults] = useState<CityResult[]>([]);
   const [open, setOpen] = useState(false);
   const [searching, setSearching] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
   const boxRef = useRef<HTMLDivElement>(null);
 
   const tooShort = query.trim().length < 2;
@@ -57,31 +47,22 @@ export function CitySearch({
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       setSearching(true);
+      setFailure(null);
       try {
-        const url = `https://photon.komoot.io/api?q=${encodeURIComponent(query)}&limit=6&lang=pt`;
-        const response = await fetch(url, { signal: controller.signal });
-        if (!response.ok) throw new Error(String(response.status));
-        const data = (await response.json()) as { features: PhotonFeature[] };
-
-        setFailed(false);
+        const payload = await searchCities(query, controller.signal);
         setSearching(false);
-        setResults(
-          data.features.map((feature) => {
-            const name = feature.properties.name ?? feature.properties.city ?? "";
-            return {
-              name,
-              country: feature.properties.country ?? null,
-              lat: feature.geometry.coordinates[1],
-              lng: feature.geometry.coordinates[0],
-              code: cityCode(name),
-            };
-          }),
-        );
+
+        if ("error" in payload) {
+          setFailure(payload.error);
+          return;
+        }
+        setFailure(null);
+        setResults(payload.results);
         setOpen(true);
       } catch (error) {
         if ((error as Error).name !== "AbortError") {
           setSearching(false);
-          setFailed(true);
+          setFailure("A busca de cidades não respondeu.");
         }
       }
     }, 250);
@@ -145,22 +126,20 @@ export function CitySearch({
         </ul>
       )}
 
-      {searching && !failed && (
+      {searching && !failure && (
         <p className="mt-1.5 font-mono text-xs text-muted">buscando…</p>
       )}
 
-      {!searching && !failed && !tooShort && visible.length === 0 && (
+      {!searching && !failure && !tooShort && visible.length === 0 && (
         <p className="mt-1.5 text-xs text-muted">
           Nenhuma cidade encontrada para “{query.trim()}”. Tente o nome no idioma local
           — Wien no lugar de Viena, por exemplo.
         </p>
       )}
 
-      {failed && (
+      {failure && !tooShort && (
         <p role="alert" className="mt-1.5 text-xs text-danger">
-          A busca de cidades não respondeu. Ela usa o serviço gratuito photon.komoot.io,
-          direto do seu navegador — verifique a conexão, ou se alguma extensão ou firewall
-          está bloqueando o endereço.
+          {failure}
         </p>
       )}
     </div>
