@@ -9,6 +9,7 @@ import { DayCard } from "@/components/days/day-card";
 import { LegRow } from "@/components/stops/leg-row";
 import { StopRow } from "@/components/stops/stop-row";
 import { StopSearch } from "@/components/stops/stop-search";
+import { DeleteTripDialog } from "@/components/trips/delete-trip-dialog";
 import { RouteStrip } from "@/components/trips/route-strip";
 import { Button } from "@/components/ui/button";
 import type { Item, Profile, TripWithRoute } from "@/lib/db/types";
@@ -62,9 +63,16 @@ export function TripView({
             {trip.emoji ? `${trip.emoji} ` : ""}
             {trip.name}
           </span>
-          <span className="ml-auto pr-2 font-mono text-xs text-ink">
+          <span className="ml-auto font-mono text-xs text-ink">
             {formatMoney(total, profile.currency)}
           </span>
+          <DeleteTripDialog
+            tripId={trip.id}
+            tripName={trip.name}
+            stopCount={trip.stops.length}
+            itemCount={items.length}
+            redirectTo="/app"
+          />
         </header>
 
         {route.length > 0 && (

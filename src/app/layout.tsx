@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Bricolage_Grotesque, IBM_Plex_Mono, Instrument_Sans } from "next/font/google";
+import { BRAND, BRAND_TAGLINE } from "@/lib/brand";
 import "./globals.css";
 
 const bricolage = Bricolage_Grotesque({
@@ -22,8 +23,8 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Rota",
-  description: "Planejador de roteiros para as viagens de um intercâmbio.",
+  title: BRAND,
+  description: BRAND_TAGLINE,
 };
 
 export default function RootLayout({

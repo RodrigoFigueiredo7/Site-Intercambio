@@ -47,3 +47,8 @@ export function addLocalDays(iso: string, days: number, tz: string): string {
   local.setDate(local.getDate() + days);
   return fromZonedTime(local, tz).toISOString();
 }
+
+/** "14:35" on the clock of that city. */
+export function localTime(iso: string, tz: string): string {
+  return formatInTimeZone(new Date(iso), tz, "HH:mm");
+}

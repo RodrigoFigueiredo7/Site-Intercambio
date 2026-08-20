@@ -101,7 +101,7 @@ export async function fromNominatim(query: string): Promise<CityResult[]> {
     "&format=jsonv2&addressdetails=1&limit=6&accept-language=pt";
   const response = await fetch(url, {
     // Nominatim's usage policy asks every client to identify itself.
-    headers: { "User-Agent": "Rota trip planner (github.com/RodrigoFigueiredo7/Site-Intercambio)" },
+    headers: { "User-Agent": "Onde esta o Rod (github.com/RodrigoFigueiredo7/Site-Intercambio)" },
     signal: AbortSignal.timeout(TIMEOUT_MS),
     next: { revalidate: CACHE_SECONDS },
   });

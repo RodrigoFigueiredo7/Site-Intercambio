@@ -66,3 +66,20 @@ export function parseMoneyToCents(text: string): number | null {
 export function centsToInput(cents: number): string {
   return (cents / 100).toFixed(2).replace(".", ",");
 }
+
+/**
+ * A count of days as a person says it. The absolute date is always shown next
+ * to it — this is the part the reader actually wanted to know.
+ */
+export function formatDayCount(days: number): string {
+  if (days === 0) return "hoje";
+  if (days === 1) return "amanhã";
+  if (days === -1) return "ontem";
+  if (days > 1) return `em ${days} dias`;
+  return `há ${-days} dias`;
+}
+
+/** "quinta, 6 de novembro" — the long form the day cards and calendar use. */
+export function formatLongDate(iso: string) {
+  return format(parseISO(iso), "EEEE, d 'de' MMMM", { locale: ptBR });
+}

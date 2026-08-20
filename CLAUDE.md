@@ -1,11 +1,16 @@
-# Rota — planejador de roteiros
+# Onde está o Rod? — o mapa de um intercâmbio
 
-Aplicação web para planejar as viagens de um intercâmbio na Europa. Uma pessoa mora em
-**Barcelona** durante o período e faz várias viagens saindo de lá. O mapa é a peça central:
+Aplicação web que responde uma pergunta: **onde eu estou agora**. Uma pessoa mora em
+**Barcelona** durante um intercâmbio e faz várias viagens saindo de lá. O mapa é a peça central:
 Barcelona aparece como base e cada viagem sai dela como um ramo colorido.
 
-O site é usado no celular e no tablet tanto quanto no desktop, e é compartilhado com amigos —
-tem que ser bonito o suficiente para mandar o link sem explicação nenhuma junto.
+São dois usos no mesmo produto. Para mim, é o planejador: cadastro paradas, deslocamentos,
+custos e o que acontece em cada dia. Para meus pais e amigos, é uma **vitrine** — eles abrem o
+site e veem onde eu estou, para onde vou e como foi cada viagem, sem login e sem explicação
+junto. O site é usado no celular e no tablet tanto quanto no desktop.
+
+O nome do produto vive em `src/lib/brand.ts`. O nome da pessoa nas frases vem de
+`profiles.display_name`, nunca escrito no código.
 
 ---
 
@@ -22,6 +27,11 @@ tem que ser bonito o suficiente para mandar o link sem explicação nenhuma junt
    exige API paga e não muda nada no planejamento.
 5. **Sem chave de API paga em lugar nenhum.** Mapa, tiles e busca de cidade são todos gratuitos.
 6. Interface e textos em **português do Brasil**. Código, identificadores e commits em inglês.
+7. **Passado, presente e futuro não são campos.** Uma viagem está acontecendo porque o relógio
+   diz que está, comparado com a primeira chegada e a última saída das paradas. As datas da
+   viagem só entram como reserva, enquanto ela ainda não tem parada nenhuma.
+8. **Onde a pessoa está também é derivado.** Nenhum campo em lugar nenhum diz "estou em Praga":
+   é a parada cuja janela contém este instante, ou o deslocamento entre duas delas, ou a base.
 
 ---
 
@@ -36,6 +46,7 @@ tem que ser bonito o suficiente para mandar o link sem explicação nenhuma junt
 | Tiles | **CARTO Positron** (`https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png`) | Base clara e discreta; as rotas coloridas ficam legíveis por cima |
 | Busca de cidade | **Photon**, com **Nominatim** de reserva, atrás de `/api/cidades` | Gratuitos e sem chave. A consulta sai do servidor: do navegador, uma extensão ou rede filtrada desliga o campo |
 | Fuso horário | **tz-lookup** (176 KB, offline) + **date-fns-tz** | Coordenada vira fuso IANA sem API; noites contadas no relógio da cidade |
+| Bandeira do país | tabela IANA → ISO 3166-1 em `src/lib/geo/country.ts` | Gerada do `zone.tab` do sistema. A bandeira sai do fuso, que toda parada já tem — nenhuma coluna nova, nenhuma requisição. O Windows não desenha bandeira em emoji e mostra as duas letras |
 | Datas | **date-fns** com locale `ptBR` | |
 | Hospedagem | **Vercel** | |
 
@@ -127,7 +138,7 @@ CSS aplica vivem em `globals.css`. Uma cor, um dono.
 
 | Papel | Fonte | Uso |
 |---|---|---|
-| Display | **Bricolage Grotesque** 700 | Nome da viagem, total de custo. Tracking `-0.02em`. Só isso. |
+| Display | **Bricolage Grotesque** 700 | Nome da viagem, total de custo e a frase de presença ("Rod está em Praga"). Tracking `-0.02em`. Só isso. |
 | Corpo | **Instrument Sans** 400/500/600 | Toda a interface |
 | Dados | **IBM Plex Mono** 500 | Horários, durações, valores, códigos de cidade, datas curtas |
 
@@ -173,6 +184,17 @@ O coração do produto. **Mapa-múndi** com todas as viagens desenhadas ao mesmo
 sua cor. Abre enquadrado na região da base, com zoom confortável, mas o mundo inteiro tem que ser
 alcançável — a maioria das viagens sai da Europa, não todas.
 
+No topo do painel, antes de qualquer rolagem, o **bloco de presença** responde a pergunta do
+título em uma frase: `Rod está em Praga 🇨🇿`, com o relógio da cidade — que se atualiza sozinho —
+e há quantas noites está lá. Entre duas paradas vira `Rod está a caminho de Viena`, com a hora
+de chegada. Sem viagem em curso, `Rod está em casa, em Barcelona`, emendando a próxima parada e
+quantos dias faltam. Tudo derivado; nada digitado.
+
+As viagens ficam em seções, nesta ordem: **Em curso**, **Em breve**, **Sem datas ainda** e
+**Já foi** — esta última recolhida num `<details>`, porque é a que cresce sem limite e não é
+para isso que a tela serve. Cada card diz quando, em palavras, ao lado da data: `dia 2 de 7`,
+`em 43 dias`, `há 50 dias`.
+
 - Zoom mínimo que caiba o planeta na tela; limite vertical para não rolar até o vazio polar.
 - Botão de **voltar para a base**, para quem navegou longe.
 
@@ -180,9 +202,15 @@ alcançável — a maioria das viagens sai da Europa, não todas.
 - Quando o primeiro trecho de uma viagem **não** parte da base, ligar a base ao primeiro ponto
   com uma linha cinza pontilhada e fina. Ela mostra o deslocamento implícito sem se confundir com
   um trecho de verdade. Sem rótulo, sem custo, não entra em nenhuma soma.
-- Painel lateral (embaixo, no celular): lista de viagens. Cada card traz emoji, nome, período,
-  `RouteStrip`, número de dias e custo total. Passar o mouse ou tocar destaca o ramo no mapa e
-  apaga os outros para 25% de opacidade.
+- Painel lateral (embaixo, no celular): lista de viagens. Cada card traz emoji, nome, quando,
+  `RouteStrip`, número de paradas, custo total e o botão de excluir. Passar o mouse ou tocar
+  destaca o ramo no mapa e apaga os outros para 25% de opacidade.
+- No mapa, o traço conta em que tempo a viagem está: a que acontece agora é a mais forte;
+  as futuras vêm logo atrás; **as passadas mantêm a cor** — são o registro do ano — porém finas
+  e a 40% de opacidade. Cinza total apagaria a graça do mapa cheio.
+- **Excluir viagem** fica no card e no cabeçalho da viagem. O diálogo diz em números o que se
+  perde ("2 paradas e 14 itens dos dias") antes de perguntar. Não existe estado "cancelada":
+  ou a viagem existe, ou foi apagada. O banco leva paradas, deslocamentos e itens em cascata.
 - Botão fixo **Nova viagem**.
 - Estado vazio: o mapa aparece enquadrado na base, só com o marcador dela, e um convite direto —
   "Sua base está em {cidade}. Crie a primeira viagem para começar a desenhar o mapa." com o
@@ -219,9 +247,11 @@ trem ou ônibus noturno, é preenchida sozinha com o deslocamento e não cobra d
 tiver nada, um aviso discreto. A agenda do dia lista por hora, com categoria e custo, e adiciona,
 edita e remove sem sair do cartão — Enter cria a próxima linha.
 
-### `/s/[token]` — link público
-Somente leitura, sem menu, sem botão de editar. Mapa, `RouteStrip`, dias e total. Bonita o
-bastante para ser o cartão de visita do projeto. Gerada no servidor.
+### `/` — a vitrine (etapa 9)
+O que os pais e amigos abrem. Somente leitura, sem menu, sem botão de editar: o bloco de
+presença, o mapa, as viagens em passado/presente/futuro, os dias e as recordações. Gerada no
+servidor com a `service_role` — **RLS nunca abre para `anon`**. O login sai daqui e vai para
+`/entrar`.
 
 ---
 
@@ -256,14 +286,30 @@ Fazer nessa sequência e **parar para eu revisar ao fim de cada uma**.
 4. ✅ **A viagem** — busca no mapa, painel de chegada e saída, mapa de visualização, aba Rota com
    parada e deslocamento editáveis à mão.
 5. ✅ **Dias** — cartão por dia, cidade deduzida, noite a bordo, agenda editável no lugar.
-6. **Publicar** — deploy na Vercel, variáveis de ambiente no painel, domínio novo nas listas de
-   redirecionamento do Supabase e do Google.
-7. **Custos** — total, custo por dia, divisão por categoria somando `legs`, `stops.lodging` e
-   `items`, com conversão para BRL.
-8. **Compartilhar** — convite por e-mail, papéis, link público `/s/[token]`.
-9. **Acabamento e identidade** — responsivo de verdade no celular, foco visível no teclado,
-   estados vazios de cada aba, `metadata` e imagem de preview. Depois disso, a estética final no
-   Claude Design: os tokens atuais são ponto de partida, não amarra.
+6. ✅ **Excluir e rebranding** — excluir viagem com confirmação que conta o que se perde; o
+   produto vira *Onde está o Rod?*; bloco de presença; seções de passado, presente e futuro;
+   o mapa desenhando cada tempo com um peso.
+7. **Calendário** — aba nova, o mês inteiro em tela cheia, a bandeira do país em cada dia,
+   clicar no dia abre a aba Dias naquele dia.
+8. **Recordações** — nota curta por dia, escrita depois da viagem. Migração `003`.
+9. **Vitrine** — `/` público para os pais e amigos, lido no servidor com a `service_role`.
+   Sem dinheiro, sem hospedagem, com `noindex`. O login vai para `/entrar`.
+10. **Custos** — total, custo por dia, divisão por categoria somando `legs`, `stops.lodging` e
+    `items`, com conversão para BRL. **Só para mim, nunca na vitrine.**
+11. **Acabamento e identidade** — responsivo de verdade no celular, foco visível no teclado,
+    estados vazios de cada aba, a logo, `metadata` e imagem de preview. Depois disso, a estética
+    final no Claude Design: os tokens atuais são ponto de partida, não amarra.
+12. **Publicar** — deploy na Vercel, variáveis de ambiente no painel, domínio novo nas listas de
+    redirecionamento do Supabase e do Google. **Por último, com tudo pronto.**
+
+### O que a vitrine nunca mostra
+
+Ela fica no endereço principal, aberta a quem tiver o link. Isso torna a localização de uma
+pessoa real pública em tempo real, então três coisas não saem de dentro do app:
+
+- **valor nenhum** — nem de trecho, nem de diária, nem total;
+- **hospedagem nenhuma** — nem nome, nem endereço, nem localizador. Só "dormiu em Praga";
+- e a página vai com **`noindex`**: quem tem o link entra, o Google não indexa.
 
 ## Fora de escopo
 

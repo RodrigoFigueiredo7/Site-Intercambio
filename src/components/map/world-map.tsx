@@ -13,6 +13,7 @@ import {
 import "leaflet/dist/leaflet.css";
 
 import type { Profile, TripWithRoute } from "@/lib/db/types";
+import type { TripStatus } from "@/lib/presence";
 import { AIR_OR_SEA } from "@/lib/map/colors";
 import type { LatLng } from "@/lib/map/geometry";
 import { legMode, tripRoute } from "@/lib/trip-route";
@@ -117,14 +118,35 @@ function Camera({
   return null;
 }
 
+/**
+ * How firmly a branch is drawn. What is happening now is the strongest thing
+ * on the map; what is over keeps its colour — it is the record of the year —
+ * but steps back so the present reads first.
+ */
+const WEIGHT: Record<TripStatus, number> = {
+  agora: 3.5,
+  futura: 2.5,
+  "sem-datas": 2.5,
+  passada: 1.5,
+};
+
+const OPACITY: Record<TripStatus, number> = {
+  agora: 1,
+  futura: 0.85,
+  "sem-datas": 0.85,
+  passada: 0.4,
+};
+
 export function WorldMap({
   profile,
   trips,
+  statuses,
   highlightedTripId,
   focusedTripId,
 }: {
   profile: Profile;
   trips: TripWithRoute[];
+  statuses: Record<string, TripStatus>;
   highlightedTripId: string | null;
   focusedTripId: string | null;
 }) {
@@ -175,7 +197,9 @@ export function WorldMap({
 
       {branches.map((branch, index) => {
         const dimmed = highlightedTripId !== null && highlightedTripId !== branch.tripId;
-        const opacity = dimmed ? 0.25 : 1;
+        const status = statuses[branch.tripId] ?? "sem-datas";
+        const opacity = dimmed ? 0.25 : OPACITY[status];
+        const weight = dimmed ? WEIGHT[status] - 0.5 : WEIGHT[status];
         const delay = `${index * 60}ms`;
 
         return (
@@ -202,7 +226,7 @@ export function WorldMap({
                     ? "leg-line leg-line--fade"
                     : "leg-line leg-line--draw",
                   color: branch.color,
-                  weight: dimmed ? 2 : 2.5,
+                  weight,
                   opacity,
                   dashArray: segment.dashed ? "3 6" : undefined,
                   lineCap: "round",

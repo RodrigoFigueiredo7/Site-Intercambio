@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 
 import type { Profile, TripWithRoute } from "@/lib/db/types";
+import type { TripStatus } from "@/lib/presence";
 
 /**
  * Leaflet reaches for `window` at import time, so the map may only ever be
@@ -19,6 +20,8 @@ const WorldMap = dynamic(
 export function MapShell(props: {
   profile: Profile;
   trips: TripWithRoute[];
+  /** Past, present and future, decided on the server. */
+  statuses: Record<string, TripStatus>;
   highlightedTripId: string | null;
   focusedTripId: string | null;
 }) {

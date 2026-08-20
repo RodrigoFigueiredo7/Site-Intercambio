@@ -49,11 +49,18 @@ export async function createTrip(formData: FormData): Promise<ActionResult> {
   return { ok: true };
 }
 
+/**
+ * The database takes the stops, the legs and everything on the days with it —
+ * every one of those tables references the trip with `on delete cascade`.
+ * Only the owner may do this; the "só o dono apaga" policy enforces that, so a
+ * shared editor gets a row count of zero rather than a deletion.
+ */
 export async function deleteTrip(tripId: string): Promise<ActionResult> {
   const supabase = await createClient();
   const { error } = await supabase.from("trips").delete().eq("id", tripId);
   if (error) return { ok: false, message: error.message };
 
   revalidatePath("/app");
+  revalidatePath(`/app/trips/${tripId}`);
   return { ok: true };
 }

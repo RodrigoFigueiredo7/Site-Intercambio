@@ -7,7 +7,7 @@ export type RouteStop = {
 };
 
 /** YYYY-MM-DD as read on a clock in that timezone. */
-function localDay(iso: string, tz: string): string {
+export function localDay(iso: string, tz: string): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: tz,
     year: "numeric",
@@ -16,7 +16,7 @@ function localDay(iso: string, tz: string): string {
   }).format(new Date(iso));
 }
 
-function daysBetween(fromDay: string, toDay: string): number {
+export function daysBetween(fromDay: string, toDay: string): number {
   return Math.round(
     (Date.parse(`${toDay}T00:00:00Z`) - Date.parse(`${fromDay}T00:00:00Z`)) / 86_400_000,
   );
