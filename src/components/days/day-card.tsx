@@ -3,24 +3,31 @@
 import { useRef, useState, useTransition } from "react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { BedDouble, MoveRight, Plus, TriangleAlert, X } from "lucide-react";
+import { MoveRight, Plus, X } from "lucide-react";
 
+import {
+  ItemFields,
+  emptyDraft,
+  readDraft,
+  type ItemDraft,
+} from "@/components/days/item-fields";
+import { ItemRow } from "@/components/days/item-row";
+import { LodgingRow } from "@/components/days/lodging-row";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { createItem, deleteItem } from "@/lib/actions/items";
-import type { ItemCategory } from "@/lib/db/types";
+import { createItem } from "@/lib/actions/items";
 import type { TripDay } from "@/lib/days";
-import { centsToInput, formatMoney, parseMoneyToCents } from "@/lib/format";
-import { cn } from "@/lib/utils";
+import { formatMoney } from "@/lib/format";
+import { localDay } from "@/lib/trip-route";
+import { flagOfTimezone } from "@/lib/geo/country";
 
-const CATEGORIES: Array<{ value: ItemCategory; label: string }> = [
-  { value: "activity", label: "passeio" },
-  { value: "food", label: "comida" },
-  { value: "lodging", label: "hospedagem" },
-  { value: "other", label: "outro" },
-];
-
+/**
+ * One day of the trip. The city and the night are deduced from the stops; the
+ * agenda is the only part that is typed.
+ *
+ * The form to add a line stays folded until it is asked for. A trip of ten
+ * days used to open ten copies of it at once, which is what made the tab feel
+ * like a form to fill in rather than a day to read.
+ */
 export function DayCard({
   day,
   tripId,
@@ -30,10 +37,8 @@ export function DayCard({
   tripId: string;
   currency: "EUR" | "BRL";
 }) {
-  const [title, setTitle] = useState("");
-  const [time, setTime] = useState("");
-  const [cost, setCost] = useState("");
-  const [category, setCategory] = useState<ItemCategory>("activity");
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState<ItemDraft>(emptyDraft);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const titleRef = useRef<HTMLInputElement>(null);
@@ -45,35 +50,37 @@ export function DayCard({
         ? day.place.stops[day.place.stops.length - 1].id
         : null;
 
+  function openAdd() {
+    setError(null);
+    setAdding(true);
+    // The field only exists after this render, so focus waits for it.
+    requestAnimationFrame(() => titleRef.current?.focus());
+  }
+
   function add(event: React.FormEvent) {
     event.preventDefault();
-    const cents = parseMoneyToCents(cost);
-    if (cents === null) {
-      setError("Valor inválido. Use algo como 12,50.");
-      return;
-    }
-    setError(null);
+    const values = readDraft(draft);
+    if (!values) return setError("Valor inválido. Use algo como 12,50.");
+    if (!values.title) return setError("Escreva o que acontece.");
 
+    setError(null);
     startTransition(async () => {
       const result = await createItem({
         tripId,
         stopId,
         day: day.date,
-        startTime: time || null,
-        category,
-        title,
-        costCents: cents,
+        startTime: values.start_time,
+        category: values.category,
+        title: values.title,
+        costCents: values.cost_cents,
         notes: null,
       });
-      if (result.ok) {
-        setTitle("");
-        setTime("");
-        setCost("");
-        // Enter creates the next line: the field is cleared and keeps focus.
-        titleRef.current?.focus();
-      } else {
-        setError(result.message);
-      }
+      if (!result.ok) return setError(result.message);
+
+      // Enter creates the next line: same category and hour kept, because the
+      // next thing that day is usually the same kind of thing.
+      setDraft({ ...draft, title: "", cost: "" });
+      titleRef.current?.focus();
     });
   }
 
@@ -81,168 +88,114 @@ export function DayCard({
 
   return (
     <article className="border-b border-line px-5 py-6">
-      <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <h3 className="text-base font-semibold">
+      <header>
+        <div className="flex items-baseline gap-3">
+          <p className="label-caps">dia {day.index} de {day.total}</p>
+          {dayTotal > 0 && (
+            <span className="ml-auto font-mono text-xs text-ink">
+              {formatMoney(dayTotal, currency)}
+            </span>
+          )}
+        </div>
+
+        <h3 className="mt-1 text-base font-semibold first-letter:uppercase">
           {format(parseISO(day.date), "EEEE, d 'de' MMMM", { locale: ptBR })}
         </h3>
-        <span className="font-mono text-xs text-muted">
-          dia {day.index} de {day.total}
-        </span>
-        {dayTotal > 0 && (
-          <span className="ml-auto shrink-0 font-mono text-xs text-ink">
-            {formatMoney(dayTotal, currency)}
-          </span>
-        )}
+
+        <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-sm">
+          {day.place.kind === "in" && <Where name={day.place.stop.name} tz={day.place.stop.tz} />}
+
+          {day.place.kind === "moving" &&
+            day.place.stops.map((stop, index) => (
+              <span key={stop.id} className="flex items-center gap-1.5">
+                {index > 0 && <MoveRight className="size-3.5 text-muted" aria-hidden="true" />}
+                <Where name={stop.name} tz={stop.tz} />
+              </span>
+            ))}
+
+          {day.place.kind === "transit" && (
+            <span className="text-muted">
+              em trânsito · {day.place.from.name} → {day.place.to.name}
+            </span>
+          )}
+
+          {day.place.kind === "unknown" && (
+            <span className="text-muted">sem parada neste dia</span>
+          )}
+        </p>
       </header>
 
-      <p className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-ink">
-        {day.place.kind === "in" && day.place.stop.name}
-        {day.place.kind === "moving" &&
-          day.place.stops.map((stop, index) => (
-            <span key={stop.id} className="flex items-center gap-1.5">
-              {index > 0 && <MoveRight className="size-3.5 text-muted" aria-hidden="true" />}
-              {stop.name}
-            </span>
-          ))}
-        {day.place.kind === "transit" && (
-          <span className="text-muted">
-            em trânsito · {day.place.from.name} → {day.place.to.name}
-          </span>
-        )}
-        {day.place.kind === "unknown" && <span className="text-muted">sem parada neste dia</span>}
-      </p>
-
-      {/* Lodging comes from the stop that covers the night, or from the ride. */}
-      <div className="mt-4 flex items-center gap-2 border-y border-line py-2.5">
-        {day.night.kind === "stop" && (
-          <>
-            <BedDouble className="size-4 shrink-0 text-muted" aria-hidden="true" />
-            <span className="text-sm">
-              {day.night.stop.lodging_name ?? "hospedagem sem nome"}
-            </span>
-            {day.night.stop.lodging_cost_cents > 0 && (
-              <span className="ml-auto font-mono text-xs text-muted">
-                {formatMoney(day.night.stop.lodging_cost_cents, currency)} no total
-              </span>
-            )}
-          </>
-        )}
-
-        {day.night.kind === "transit" && (
-          <>
-            <MoveRight className="size-4 shrink-0 text-muted" aria-hidden="true" />
-            <span className="text-sm">
-              Noite a bordo · {day.night.from.name} → {day.night.to.name}
-              {day.night.leg?.operator ? ` · ${day.night.leg.operator}` : ""}
-            </span>
-            <span className="ml-auto font-mono text-xs text-muted">sem diária</span>
-          </>
-        )}
-
-        {day.night.kind === "none" && (
-          <>
-            <TriangleAlert className="size-4 shrink-0 text-muted" aria-hidden="true" />
-            <span className="text-sm text-muted">Esta noite não tem onde dormir.</span>
-          </>
-        )}
-
-        {day.night.kind === "trip-ends" && (
-          <span className="font-mono text-xs text-muted">último dia da viagem</span>
-        )}
+      <div className="mt-4">
+        <LodgingRow
+          night={day.night}
+          tripId={tripId}
+          currency={currency}
+          firstNight={
+            day.night.kind === "stop" &&
+            localDay(day.night.stop.arrive_at, day.night.stop.tz) === day.date
+          }
+          onError={setError}
+        />
       </div>
 
       {day.items.length > 0 && (
-        <ul className="mt-3">
+        <ul className="mt-1">
           {day.items.map((item) => (
-            <li
+            <ItemRow
               key={item.id}
-              className="flex items-baseline gap-3 border-b border-line py-2 last:border-0"
-            >
-              <span className="w-12 shrink-0 font-mono text-xs text-muted">
-                {item.start_time ? item.start_time.slice(0, 5) : "—"}
-              </span>
-              <span className="text-sm text-ink">{item.title}</span>
-              <span className="font-mono text-label uppercase tracking-[0.12em] text-muted">
-                {CATEGORIES.find((c) => c.value === item.category)?.label}
-              </span>
-              <span className="ml-auto shrink-0 font-mono text-xs text-ink">
-                {item.cost_cents > 0 ? formatMoney(item.cost_cents, currency) : ""}
-              </span>
-              <button
-                type="button"
-                aria-label={`Remover ${item.title}`}
-                onClick={() =>
-                  startTransition(async () => {
-                    const result = await deleteItem(item.id, tripId);
-                    if (!result.ok) setError(result.message);
-                  })
-                }
-                className="shrink-0 text-muted hover:text-danger"
-              >
-                <X className="size-3.5" />
-              </button>
-            </li>
+              item={item}
+              tripId={tripId}
+              currency={currency}
+              onError={setError}
+            />
           ))}
         </ul>
       )}
 
-      <form onSubmit={add} className="mt-3 flex flex-wrap items-end gap-x-2 gap-y-3">
-        <div className="w-20">
-          <Label htmlFor={`t-${day.date}`}>Hora</Label>
-          <Input
-            id={`t-${day.date}`}
-            type="time"
-            value={time}
-            onChange={(event) => setTime(event.target.value)}
-            className="mt-1.5 font-mono"
+      {adding ? (
+        <form
+          onSubmit={add}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") setAdding(false);
+          }}
+          className="mt-3"
+        >
+          <ItemFields
+            draft={draft}
+            onChange={setDraft}
+            idPrefix={`add-${day.date}`}
+            titleRef={titleRef}
+            labels
           />
-        </div>
-        <div className="min-w-40 flex-1">
-          <Label htmlFor={`i-${day.date}`}>O que acontece</Label>
-          <Input
-            id={`i-${day.date}`}
-            ref={titleRef}
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder="adicionar ao dia"
-            className="mt-1.5"
-          />
-        </div>
-        <div className="w-24">
-          <Label htmlFor={`c-${day.date}`}>Custo</Label>
-          <Input
-            id={`c-${day.date}`}
-            value={cost}
-            onChange={(event) => setCost(event.target.value)}
-            inputMode="decimal"
-            placeholder={centsToInput(0)}
-            className="mt-1.5 font-mono"
-          />
-        </div>
-        <Button type="submit" size="icon" aria-label="Adicionar item" disabled={pending || !title.trim()}>
-          <Plus />
-        </Button>
-
-        <fieldset className="flex w-full flex-wrap gap-1.5">
-          <legend className="sr-only">Categoria</legend>
-          {CATEGORIES.map(({ value, label }) => (
-            <button
-              key={value}
+          <div className="mt-3 flex gap-2">
+            <Button type="submit" disabled={pending || !draft.title.trim()}>
+              <Plus />
+              Adicionar
+            </Button>
+            <Button
               type="button"
-              onClick={() => setCategory(value)}
-              aria-pressed={category === value}
-              className={cn(
-                "rounded-full border px-2.5 py-0.5 font-mono text-label uppercase tracking-[0.12em]",
-                category === value
-                  ? "border-accent bg-accent-soft text-ink"
-                  : "border-line bg-surface text-muted hover:bg-paper",
-              )}
+              variant="ghost"
+              size="icon"
+              aria-label="Fechar"
+              onClick={() => setAdding(false)}
             >
-              {label}
-            </button>
-          ))}
-        </fieldset>
-      </form>
+              <X />
+            </Button>
+          </div>
+          <p className="mt-2 font-mono text-xs text-muted">
+            Enter cria a próxima linha. Esc fecha.
+          </p>
+        </form>
+      ) : (
+        <button
+          type="button"
+          onClick={openAdd}
+          className="mt-2 flex h-11 w-full items-center gap-2 rounded-field text-sm text-muted hover:bg-paper hover:text-ink"
+        >
+          <Plus className="size-4" />
+          Adicionar ao dia
+        </button>
+      )}
 
       {error && (
         <p role="alert" className="mt-2 text-sm text-danger">
@@ -250,5 +203,19 @@ export function DayCard({
         </p>
       )}
     </article>
+  );
+}
+
+function Where({ name, tz }: { name: string; tz: string }) {
+  const flag = flagOfTimezone(tz);
+  return (
+    <span className="whitespace-nowrap text-ink">
+      {name}
+      {flag && (
+        <span aria-hidden="true" className="ml-1.5 text-xs">
+          {flag}
+        </span>
+      )}
+    </span>
   );
 }

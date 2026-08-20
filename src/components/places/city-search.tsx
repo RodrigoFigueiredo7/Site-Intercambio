@@ -132,8 +132,7 @@ export function CitySearch({
 
       {!searching && !failure && !tooShort && visible.length === 0 && (
         <p className="mt-1.5 text-xs text-muted">
-          Nenhuma cidade encontrada para “{query.trim()}”. Tente o nome no idioma local
-          — Wien no lugar de Viena, por exemplo.
+          Nenhuma cidade encontrada para “{query.trim()}”. Tente o nome no idioma local.
         </p>
       )}
 

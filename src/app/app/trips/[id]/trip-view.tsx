@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
 import { DayCard } from "@/components/days/day-card";
+import { PlanImport } from "@/components/import/plan-import";
 import { LegRow } from "@/components/stops/leg-row";
 import { StopRow } from "@/components/stops/stop-row";
 import { StopSearch } from "@/components/stops/stop-search";
@@ -17,12 +18,18 @@ import { tripDays } from "@/lib/days";
 import { formatMoney } from "@/lib/format";
 import { formatDuration, travelMinutes, tripCostCents, tripRoute } from "@/lib/trip-route";
 
+const TAB_LABEL: Record<Tab, string> = {
+  rota: "Rota",
+  dias: "Dias",
+  texto: "Texto",
+};
+
 const TripMap = dynamic(
   () => import("@/components/map/trip-map").then((mod) => mod.TripMap),
   { ssr: false, loading: () => <div className="size-full bg-paper" aria-hidden="true" /> },
 );
 
-type Tab = "rota" | "dias";
+type Tab = "rota" | "dias" | "texto";
 
 export function TripView({
   trip,
@@ -86,7 +93,7 @@ export function TripView({
           aria-label="Seções da viagem"
           className="flex flex-none border-b border-line"
         >
-          {(["rota", "dias"] as const).map((value) => (
+          {(["rota", "dias", "texto"] as const).map((value) => (
             <button
               key={value}
               role="tab"
@@ -98,13 +105,20 @@ export function TripView({
                   : "border-b-2 border-transparent text-muted hover:bg-paper"
               }`}
             >
-              {value === "rota" ? "Rota" : "Dias"}
+              {TAB_LABEL[value]}
             </button>
           ))}
         </div>
 
         <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-          {tab === "dias" ? (
+          {tab === "texto" ? (
+            <PlanImport
+              tripId={trip.id}
+              year={Number((trip.start_date ?? new Date().toISOString()).slice(0, 4))}
+              month={trip.start_date ? Number(trip.start_date.slice(5, 7)) : null}
+              currency={profile.currency}
+            />
+          ) : tab === "dias" ? (
             days.length === 0 ? (
               <div className="px-5 py-8">
                 <p className="label-caps">Sem dias ainda</p>

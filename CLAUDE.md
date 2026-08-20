@@ -241,11 +241,27 @@ duração — que é subtração, nunca digitada — e abre para eu dizer **o qu
 meio, companhia, valor, selo de status (`ideia` / `reservar` / `reservado`).
 
 **Dias** — um cartão por dia do calendário, editável no próprio lugar, sem modal. O cabeçalho traz
-a data por extenso, `dia N de M` e onde eu estou, **deduzido das paradas, nunca digitado** — no dia
-da mudança, todas as cidades tocadas. A hospedagem vem da parada daquela noite; se a noite for num
-trem ou ônibus noturno, é preenchida sozinha com o deslocamento e não cobra diária; se a noite não
-tiver nada, um aviso discreto. A agenda do dia lista por hora, com categoria e custo, e adiciona,
-edita e remove sem sair do cartão — Enter cria a próxima linha.
+`dia N de M`, a data por extenso e onde eu estou com a bandeira do país, **deduzido das paradas,
+nunca digitado** — no dia da mudança, todas as cidades tocadas.
+
+A hospedagem vem da parada daquela noite e **se edita a partir do dia**: nome, endereço e total
+gravam na parada dona da noite, e o valor aparece só na primeira noite da estadia, porque é o
+total dela e não uma diária. Noite em trem ou ônibus noturno se preenche sozinha com o
+deslocamento e não cobra diária; noite sem nada leva um aviso discreto.
+
+A agenda lista por hora, com categoria e custo. **Clicar numa linha abre ela para editar no
+lugar** — os mesmos campos que a criaram. O formulário de adicionar fica **recolhido** atrás de
+um "Adicionar ao dia": aberto em todo cartão ao mesmo tempo, ele transformava a aba num
+formulário em vez de um dia para ler. Enter cria a próxima linha, Esc fecha.
+
+**Texto** — colo um plano escrito à mão e ele se distribui pelos dias. **Não é modelo de
+linguagem**: é um analisador em `src/lib/import/parse-plan.ts` que lê as formas que uma pessoa
+escreve de verdade — `Praga, 6 a 9 de novembro`, `chego 14h, saio 22h`, `10h castelo 12,50`,
+`8/11 museu €10`. Um número solto nunca vira preço; precisa de vírgula decimal ou de símbolo de
+moeda, senão "Sala 2" viraria dois euros. As cidades passam pelo mesmo `/api/cidades` da busca do
+mapa, então uma parada importada é igual a uma digitada. **Nada é gravado antes de ser mostrado**:
+a tela de conferência lista paradas, itens e as linhas que não foram entendidas, e só então grava.
+Modelo de linguagem de verdade exigiria chave de API paga, o que a regra 5 proíbe.
 
 ### `/` — a vitrine (etapa 9)
 O que os pais e amigos abrem. Somente leitura, sem menu, sem botão de editar: o bloco de
@@ -289,17 +305,19 @@ Fazer nessa sequência e **parar para eu revisar ao fim de cada uma**.
 6. ✅ **Excluir e rebranding** — excluir viagem com confirmação que conta o que se perde; o
    produto vira *Onde está o Rod?*; bloco de presença; seções de passado, presente e futuro;
    o mapa desenhando cada tempo com um peso.
-7. **Calendário** — aba nova, o mês inteiro em tela cheia, a bandeira do país em cada dia,
+7. ✅ **Dias de verdade** — hospedagem e itens editáveis no lugar, formulário recolhido, e a aba
+   **Texto** que espalha um plano colado pelos dias.
+8. **Calendário** — aba nova, o mês inteiro em tela cheia, a bandeira do país em cada dia,
    clicar no dia abre a aba Dias naquele dia.
-8. **Recordações** — nota curta por dia, escrita depois da viagem. Migração `003`.
-9. **Vitrine** — `/` público para os pais e amigos, lido no servidor com a `service_role`.
+9. **Recordações** — nota curta por dia, escrita depois da viagem. Migração `003`.
+10. **Vitrine** — `/` público para os pais e amigos, lido no servidor com a `service_role`.
    Sem dinheiro, sem hospedagem, com `noindex`. O login vai para `/entrar`.
-10. **Custos** — total, custo por dia, divisão por categoria somando `legs`, `stops.lodging` e
+11. **Custos** — total, custo por dia, divisão por categoria somando `legs`, `stops.lodging` e
     `items`, com conversão para BRL. **Só para mim, nunca na vitrine.**
-11. **Acabamento e identidade** — responsivo de verdade no celular, foco visível no teclado,
+12. **Acabamento e identidade** — responsivo de verdade no celular, foco visível no teclado,
     estados vazios de cada aba, a logo, `metadata` e imagem de preview. Depois disso, a estética
     final no Claude Design: os tokens atuais são ponto de partida, não amarra.
-12. **Publicar** — deploy na Vercel, variáveis de ambiente no painel, domínio novo nas listas de
+13. **Publicar** — deploy na Vercel, variáveis de ambiente no painel, domínio novo nas listas de
     redirecionamento do Supabase e do Google. **Por último, com tudo pronto.**
 
 ### O que a vitrine nunca mostra
